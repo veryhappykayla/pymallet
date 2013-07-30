@@ -7,6 +7,8 @@ import json
 
 from pprint import pprint
 
+from collections import *
+
 PRINT_OUTPUT = False
 
 
@@ -92,6 +94,73 @@ def create_topic_document_matrix(outfile='', topic_composition_dict={}):
         pprint(matrix)
 
     return matrix
+
+################################################################################
+
+def unigram_topics(input_topic_state_filename, output_unigrams_filename, **kwargs):
+    
+    # Frequency threshold
+    if "freq_threshold" in kwargs:
+        freq_threshold = kwargs["freq_threshold"]
+    else:
+        freq_threshold = 0
+    
+    # Topic threshold
+    if "topic_threshold" in kwargs:
+        topic_threshold = kwargs["topic_threshold"]
+    else:
+        topic_threshold = 0
+    
+    #-------------------------------------------------------------------------------    
+    # Process tokens in topic state
+    
+    input_topic_state_file = open(input_topic_state_filename, "rb")
+    
+    # Skip first three lines of MALLET topic state file which has ignorable info
+    input_topic_state_file.readline()
+    input_topic_state_file.readline()
+    input_topic_state_file.readline()
+    
+    counts = defaultdict(lambda: defaultdict(int))
+    
+    for line in input_topic_state_file:
+        data = line.rstrip().split()
+        counts[data[-2]][data[-1]] +=1
+    
+    input_topic_state_file.close()
+    
+    #-------------------------------------------------------------------------------    
+    # Consolidating topics and printing to output unigrams file
+    
+    # Open files
+    output_unigrams_file = open(output_unigrams_filename, "wb")
+        
+    # Print header for output:
+    header = "unigram" + "\t" + "count" + "\t" + "topics_list_with_scores"
+    print >> output_unigrams_file, header
+
+    for word in counts:
+    
+        t_total = sum(counts[word].values())
+        
+        if t_total >= freq_threshold:
+        
+            w_t = defaultdict(float)
+            for t in counts[word]:
+                if float(counts[word][t])/t_total >= topic_threshold:
+                    w_t[t] = float(counts[word][t])/t_total
+                    
+            ml = sorted([(value,int(item)) for item,value in w_t.iteritems()], reverse = True)
+        
+            toPrint =  word + "\t" + str(t_total) + "\t" + str(ml)
+        
+            if debugMode: print toPrint
+            print >> output_unigrams_file, toPrint
+    
+    # Close output unigrams file
+    output_unigrams_file.close()
+
+################################################################################
 
 if __name__ == "__main__":
     main()
