@@ -16,14 +16,16 @@ def main():
     outfile = 'data/td_T5-topic_document_matrix.csv'
     create_topic_document_matrix(outfile, d)
 
-def convert_topic_composition_to_dict(input_csv_filename = ''):
-    
+
+def convert_topic_composition_to_dict(input_csv_filename=''):
+    """Takes a topic composition tab-separted file. Converts it into a dict.
+    Each item's key is the file_id (<id>.txt) and value is a dict of mallet_id, file_path, 
+    and topic_probabilities [list of length n, ordered by topic id 0-to-n]"""
+
     output = {}
     with open(input_csv_filename, "rU") as input_csv_file:
-        # input_reader = csv.DictReader(input_csv_file, delimiter='\t',
-        # quotechar='"') #, escapechar="\\")
         input_reader = csv.reader(
-            input_csv_file, delimiter='\t', quotechar='"')  # , escapechar="\\")
+            input_csv_file, delimiter='\t', quotechar='"')
 
         # Skip the headers
         next(input_reader, None)
@@ -67,21 +69,28 @@ def convert_topic_composition_to_dict(input_csv_filename = ''):
 
         return output
 
-def create_topic_document_matrix(outfile = '', topic_composition_dict = {}):
-    """Currently lda_topicsdocs creates one file per topic with all the documents and their scores for that topic. Also create a single file which is a topic-document matrix -- rows are the documents, columns are the topics, values are the score for the topic in the document."""
+
+def create_topic_document_matrix(outfile='', topic_composition_dict={}):
+    """Creates a single file which is a topic-document matrix.
+    Rows are the documents, columns are the topics, values are the score for the topic in the document."""
 
     matrix = []
-    with open(outfile, 'wb') as f:
-        writer = csv.writer(f, delimiter='\t', quotechar='"')
-        for k in topic_composition_dict:
-            row_values = []
-            row_values.append(topic_composition_dict[k]['mallet_id'])
-            row_values.extend(topic_composition_dict[k]['topic_probabilities'])
-            writer.writerow(row_values)
 
-            matrix.append(row_values)
+    for k in topic_composition_dict:
+        row_values = []
+        row_values.append(topic_composition_dict[k]['mallet_id'])
+        row_values.extend(topic_composition_dict[k]['topic_probabilities'])
 
-    # pprint(matrix)
+        matrix.append(row_values)
+
+    if outfile:
+        with open(outfile, 'wb') as f:
+            writer = csv.writer(f, delimiter=',', quotechar='"')
+            writer.writerows(matrix)
+
+    if PRINT_OUTPUT:
+        pprint(matrix)
+
     return matrix
 
 if __name__ == "__main__":
