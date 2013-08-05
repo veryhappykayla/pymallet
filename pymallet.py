@@ -62,7 +62,40 @@ class pymallet(object):
 		subprocess.call(["ls", temp_directory])
 		subprocess.call(["ls", out_directory])
 
+        #...
+    # data = my_topic_model
+    # id,t1,t2,t3
+    # 1,0.1,.5,.4 -> [[1,.1,.5,.4],[2,.1.]
 
+    # id, t0 (or the topic definition), t1, ...
+    # [6 : [.1,.5,.4]), 4 : ,[.1.])]
+
+    # ungzip and turn it into python stuff
+    # bin\mallet import-dir --input INPUTDIRECTORYPATH --output OUTPUTDIRECTORYPATH\mymodel.mallet --keep-sequence --remove-stopwords
+    # bin\mallet train-topics --input OUTPUTDIRECTORYPATH\mymodel.mallet
+    # --num-topics 5 --optimize-interval 10 --output-state
+    # OUTPUTDIRECTORYPATH\mymodel_T5.gz --output-topic-keys
+    # OUTPUTDIRECTORYPATH\mymodel_T5-keys.txt --output-doc-topics
+    # OUTPUTDIRECTORYPATH\td_T5-composition.txt
+
+    # after creating output files, create what user interacts with
+    #  - document_id / topics matrix
+    #  - topic / ordered-list of documents (by proportion)
+    #  - topic definitions
+
+    return {
+        "matrix": None,
+        "topic_lists": None,
+        "topic_definitions": None,
+    }
+
+    # cleanup
+    for f in id_file_map.values():
+        print f
+        os.unlink(f.name)
+        print os.path.exists(f.name)
+
+    pass
 
 
 		#subprocess.call(["/Users/paulmeinshausen/mallet-2.0.7/bin/mallet"])
