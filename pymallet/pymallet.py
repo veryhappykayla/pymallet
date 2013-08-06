@@ -45,8 +45,13 @@ class pymallet(object):
     ### OF INDIVIDUAL DOCUMENTS
 
     def import_documents(self, input_csv_filename="data/test.csv"):
+        """Headers is a 2-element list, text, where the first element is the column name
+        for the document id, and the 2nd element is the column name for the document text"""
 
         _matrix = None
+
+        id_idx = 0
+        document_idx = 1
 
         temp_directory = tempfile.mkdtemp()
         out_directory = tempfile.mkdtemp()
@@ -55,8 +60,8 @@ class pymallet(object):
                 input_csv_file, delimiter=',', quotechar='"', escapechar='\\')
 
             for row in input_reader:
-                item_id, text = row[0], row[1]
-                print 'id: %s, text: %s' % (row[0], row[1])
+                item_id, text = row[id_idx], row[document_idx]
+                print 'id: %s, text: %s' % (row[id_idx], row[document_idx])
                 f = tempfile.NamedTemporaryFile(
                     delete=False, dir=temp_directory, suffix='.txt')
                 self._id_file_map[f.name] = item_id
@@ -82,7 +87,7 @@ class pymallet(object):
              out_directory + "/mymodel.mallet", "--keep-sequence", "--remove-stopwords"], env=my_env)
         subprocess.call(
             [MALLET_PATH, "train-topics", "--input", out_directory + "/mymodel.mallet", "--num-topics", str(NUM_TOPICS), "--optimize-interval", str(OPT_INTERVAL), "--output-state",
-             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-keys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt"], env=my_env)
+             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-ke ys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt"], env=my_env)
         subprocess.call(["ls", temp_directory])
         subprocess.call(["ls", out_directory])
 
