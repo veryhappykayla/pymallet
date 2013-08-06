@@ -6,6 +6,20 @@ import tempfile
 import subprocess
 import os
 
+"""
+TODOS: 
+
+- not hardcode mallet path
+- upload it to PIP
+- clean up folder paths to work on windows
+- import it in another application and get the returned values
+- update the readme (with a mini-tutorial)
+- world peace.
+- achieve fame and riches. (through world peace)
+
+
+"""
+
 # import ipdb
 
 from pprint import pprint
@@ -18,6 +32,7 @@ class pymallet(object):
     """class documentation string"""
     
     _id_file_map = {}
+    # matrix = None
 
     def __init__(self):
         print "Welcome to pymallet"
@@ -52,9 +67,11 @@ class pymallet(object):
 
         print temp_directory
 
-        # my_env = os.environ.copy()
+        my_env = os.environ.copy()
         # subprocess.call("mallet", env=my_env)
-        MALLET_PATH = "/Applications/mallet-2.0.7/bin/mallet"
+        # return
+
+        MALLET_PATH = "mallet"
         NUM_TOPICS = 5
         OPT_INTERVAL = 10
 
@@ -62,17 +79,17 @@ class pymallet(object):
         # TODO: consider renaming mymodel for clarity?
         subprocess.call(
             [MALLET_PATH, "import-dir", "--input", temp_directory, "--output",
-             out_directory + "/mymodel.mallet", "--keep-sequence", "--remove-stopwords"])
+             out_directory + "/mymodel.mallet", "--keep-sequence", "--remove-stopwords"], env=my_env)
         subprocess.call(
             [MALLET_PATH, "train-topics", "--input", out_directory + "/mymodel.mallet", "--num-topics", str(NUM_TOPICS), "--optimize-interval", str(OPT_INTERVAL), "--output-state",
-             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-keys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt"])
+             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-keys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt"], env=my_env)
         subprocess.call(["ls", temp_directory])
         subprocess.call(["ls", out_directory])
 
         tc_dict = self.convert_topic_composition_to_dict(out_directory + "/td_T5-composition.txt", NUM_TOPICS)
         matrix = self.create_topic_document_matrix(topic_composition_dict=tc_dict)
 
-        pprint(matrix)
+        # pprint(matrix)
 
         #...
         # data = my_topic_model
@@ -95,12 +112,13 @@ class pymallet(object):
             os.unlink(f)
             print os.path.exists(f)
             
+        self.matrix = matrix
+
         return {
             "matrix": matrix,
             "topic_lists": None,
             "topic_definitions": None,
         }
-
 
     def convert_topic_composition_to_dict(self, input_csv_filename='', topic_count=0):
         """Takes a topic composition tab-separted file. Converts it into a dict.
