@@ -22,7 +22,7 @@ setup(
     name="pymallet",
     # version=str(package['version']),
     version='0.1',
-    author='Nathan Leiby',
+    author='Team DSSG',
     author_email='nathanleiby@gmail.com',
     license='MIT',
     description='Mallet (natural language processing) wrapper in Python',

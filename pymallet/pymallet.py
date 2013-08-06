@@ -5,6 +5,7 @@ import json
 import tempfile
 import subprocess
 import os
+import pdb
 
 """
 TODOS: 
@@ -16,7 +17,7 @@ TODOS:
 - update the readme (with a mini-tutorial)
 - world peace.
 - achieve fame and riches. (through world peace)
-
+- cleanup temp directories when process is over? save things elsewhere only if user asks for it
 
 """
 
@@ -25,6 +26,7 @@ TODOS:
 from pprint import pprint
 
 PRINT_OUTPUT = False
+MALLET_PATH = "mallet"
 
 ### PYMALLET
 
@@ -32,6 +34,11 @@ class pymallet(object):
     """class documentation string"""
     
     _id_file_map = {}
+    _RANDOM_SEED = 1 # TODO: replace seed with 0, which uses clock. 1 added for repeatable testing
+
+    _inferencer = None
+    _num_topics = 0 # TODO: make this part of init
+    _out_directory = None # TODO: make this part of init
     # matrix = None
 
     def __init__(self):
@@ -55,6 +62,8 @@ class pymallet(object):
 
         temp_directory = tempfile.mkdtemp()
         out_directory = tempfile.mkdtemp()
+        self._out_directory = out_directory
+
         with open(input_csv_filename, "rU") as input_csv_file:
             input_reader = csv.reader(
                 input_csv_file, delimiter=',', quotechar='"', escapechar='\\')
@@ -76,20 +85,27 @@ class pymallet(object):
         # subprocess.call("mallet", env=my_env)
         # return
 
-        MALLET_PATH = "mallet"
+
         NUM_TOPICS = 5
+        self._num_topics = NUM_TOPICS
         OPT_INTERVAL = 10
+        INFERENCER_FILE = "/td_T5-inferencer"
 
         # run mallet on this directory
         # TODO: consider renaming mymodel for clarity?
         subprocess.call(
             [MALLET_PATH, "import-dir", "--input", temp_directory, "--output",
              out_directory + "/mymodel.mallet", "--keep-sequence", "--remove-stopwords"], env=my_env)
+        
+        print "-- Training topics and creating inferencer"
         subprocess.call(
             [MALLET_PATH, "train-topics", "--input", out_directory + "/mymodel.mallet", "--num-topics", str(NUM_TOPICS), "--optimize-interval", str(OPT_INTERVAL), "--output-state",
-             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-ke ys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt"], env=my_env)
-        subprocess.call(["ls", temp_directory])
-        subprocess.call(["ls", out_directory])
+             out_directory + '/mymodel_T5.gz', "--output-topic-keys", out_directory + "/mymodel_T5-keys.txt", "--output-doc-topics", out_directory + "/td_T5-composition.txt", "--inferencer-filename", out_directory + INFERENCER_FILE], env=my_env)
+        
+        self._inferencer = out_directory + INFERENCER_FILE
+
+        subprocess.call(["ls", "-afgh", temp_directory])
+        subprocess.call(["ls", "-afgh", out_directory])
 
         tc_dict = self.convert_topic_composition_to_dict(out_directory + "/td_T5-composition.txt", NUM_TOPICS)
         matrix = self.create_topic_document_matrix(topic_composition_dict=tc_dict)
@@ -113,9 +129,9 @@ class pymallet(object):
 
         # cleanup
         for f in self._id_file_map:
-            print f
+            # print f
             os.unlink(f)
-            print os.path.exists(f)
+            # print os.path.exists(f)
             
         self.matrix = matrix
 
@@ -125,26 +141,66 @@ class pymallet(object):
             "topic_definitions": None,
         }
 
-    def convert_topic_composition_to_dict(self, input_csv_filename='', topic_count=0):
+
+    def infer_topic_weights(self, text=""):
+        my_env = os.environ.copy()
+
+        if not self._inferencer:
+            raise Exception, "No inferencer has been created (%s)" % (self._inferencer,)
+        if not self._num_topics:
+            raise Exception, "Number of topics is not set (%s)" % (self._num_topics,)
+        if not self._out_directory:
+            raise Exception, "Out directory isnt set (%s)" % (self._out_directory,)
+
+        tmp_dir = tempfile.mkdtemp()
+        f = tempfile.NamedTemporaryFile(
+                            delete=False, dir=tmp_dir, suffix='.txt')
+        f.write(text)
+        f.close()
+        
+        self._id_file_map[f.name] = 'infer_doc'
+
+        print "-- Preparing data for inferencer"
+        subprocess.call(
+            [MALLET_PATH, "import-dir", "--input", tmp_dir, "--output",
+             self._out_directory + "/new_document.mallet", "--keep-sequence", "--remove-stopwords"], env=my_env)
+
+        print "-- Inferring topics from document"
+        subprocess.call([MALLET_PATH, "infer-topics", "--inferencer", self._inferencer, "--input", self._out_directory + "/new_document.mallet", "--output-doc-topics", self._out_directory + "/new_document_topics.txt", "--random-seed", str(self._RANDOM_SEED)], env=my_env)
+        
+        topic_composition_csv = self._out_directory + "/new_document_topics.txt"
+        tc_dict = self.convert_topic_composition_to_dict(topic_composition_csv, self._num_topics, delimiter_=" ")
+        matrix = self.create_topic_document_matrix(topic_composition_dict=tc_dict)
+        return matrix[0][1:]
+
+        # convert_topic_composition_to_dict()
+
+    def convert_topic_composition_to_dict(self, input_csv_filename='', topic_count=0, delimiter_='\t'):
         """Takes a topic composition tab-separted file. Converts it into a dict.
         Each item's key is the file_id (<id>.txt) and value is a dict of mallet_id, file_path,
         and topic_probabilities [list of length n, ordered by topic id 0-to-n]"""
 
+        print "convert_topic_composition_to_dict"
+
         output = {}
         with open(input_csv_filename, "rU") as input_csv_file:
             input_reader = csv.reader(
-                input_csv_file, delimiter='\t', quotechar='"')
+                input_csv_file, delimiter=delimiter_, quotechar='"')
 
             # Skip the headers
             next(input_reader, None)
 
             for row in input_reader:
-
                 # convert topic probabilities to a list, ordered by topic id (note:
                 # we lose probability ordering)
-                print row
-                row.remove('')
-                print row
+                # print row
+                while True:
+                    try:
+                        row.remove('')
+                    except:
+                        break
+                
+                # print row
 
                 probabilities_from_csv = row[2:]
 
@@ -216,3 +272,9 @@ class pymallet(object):
 if __name__ == "__main__":
     p = pymallet()
     p.import_documents()
+
+    text = "kericho county,chesinende town, bribery "
+    text += "i am kericho county,chesinende town,a man outside the poling station is giving ksh to vote for his candidate-please help"
+
+    output = p.infer_topic_weights(text)
+    print output

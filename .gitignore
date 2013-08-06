@@ -1,5 +1,6 @@
 *.py[cod]
 data
+*.DS_Store
 
 # C extensions
 *.so
