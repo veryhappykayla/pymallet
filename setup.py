@@ -21,7 +21,7 @@ def download_mallet():
 setup(
     name="pymallet",
     # version=str(package['version']),
-    version='0.1',
+    version='0.1.1',
     author='Team DSSG',
     author_email='nathanleiby@gmail.com',
     license='MIT',
